@@ -1,0 +1,186 @@
+<title></title>
+<!-- <title>React App 18 createRoot</title> -->
+
+<body>
+  <!-- <h1>React App 18 createRoot</h1> -->
+  <h1>React SetState</h1>
+  <hr />
+  <div id="root"></div>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+  <script type="text/babel">
+    const { useState, useEffect, useLayoutEffect, useMemo } = React
+    function Example() {
+
+      console.log('______render start_______');
+      const [count, setCount] = useState(0);
+
+      function useEffectDemo() {
+        console.log('useEffect');
+      }
+      useEffect(useEffectDemo, [count]);
+
+      function useLayoutEffectDemo() {
+        console.log('useLayoutEffect');
+      }
+      useLayoutEffect(useLayoutEffectDemo, [count]);
+
+
+      function queueMicrotaskDemo() {
+        console.log('queueMicrotask');
+      }
+      queueMicrotask(queueMicrotaskDemo);
+
+
+      function setTimeoutDemo() {
+        console.log('setTimeout');
+      }
+      setTimeout(setTimeoutDemo, 0);
+
+      function requestIdleCallbackDemo() {
+        console.log('requestIdleCallback');
+      }
+      requestIdleCallback(requestIdleCallbackDemo);
+
+      function useMemoDemo() {
+        console.log('useMemo');
+        return 2;
+      }
+      const num = useMemo(useMemoDemo, []);
+
+      function handleClick() {
+          function setTimeoutInOnClick() {
+            console.log('setTimeout in onClick');
+          }
+          setTimeout(setTimeoutInOnClick);
+
+          function queueMicrotaskInOnClick() {
+            console.log('queueMicrotask in onClick');
+          }
+          queueMicrotask(queueMicrotaskInOnClick);
+
+          function setCountFun(count) {
+            console.log('setCount')
+            return count + 1
+          }
+          setCount(setCountFun);
+
+          function queueMicrotaskInOnClick111() {
+            console.log('queueMicrotask in onClick111');
+          }
+          queueMicrotask(queueMicrotaskInOnClick111);
+      }
+
+      console.log('______render end______');
+      return (
+        <div>
+          <div
+            onClick={handleClick}
+          >
+            {count}
+          </div>
+        </div>
+      );
+    }
+    // ReactDOM.render(<Example />, document.getElementById("root"));
+    const root = ReactDOM.createRoot(document.getElementById("root"));
+    root.render(<Example />)
+
+
+    // JavaScript 有没有真正的异步？（排除 webworker 之类的方式）
+    // 单线程在跑
+    // JavaScript 主线程上跑
+
+    // const stateArray = []
+    // let isStart = false
+    // function setState(func) {
+    //   if (!isStart) {
+    //     isStart = true
+    //     queueMicrotask(() => {
+    //       // 结算 state
+    //       isStart = false
+    //     })
+    //   }
+    //   stateArray.push(func)
+    // }
+
+    // function A() {
+    //   setState(count => count + 1)
+    //   setState(count => count + 1)
+    // }
+    
+    
+    // render phrase => commit phrase
+    // 渲染阶段 => 执行 Example 这个函数
+    // 提交阶段 => diff 过来的 dom 变化一次性提交给浏览器更新
+
+    // MessageChannel
+      // const channel = new MessageChannel();
+
+      // setTimeout(() => {
+      //         console.log('setTimeout1');
+      // }, 0);
+      // queueMicrotask(() => {
+      //         console.log('queueMicrotask1');
+      //       });
+      // const channel = new MessageChannel();
+      // queueMicrotask(() => {
+      //         console.log('queueMicrotask1');
+      //     });
+      // channel.port1.onmessage = function() {
+      //   console.log("after repaint");
+      // };
+      // channel.port2.postMessage(undefined);
+      // queueMicrotask(() => {
+      //         console.log('queueMicrotask2');
+      //       });
+
+      // setTimeout(() => {
+      //         console.log('setTimeout2');
+      // }, 0);
+
+      // const channel = new MessageChannel();
+      // function requestCallback(callback) {
+      //   channel.port1.onmessage = function() {
+      //     callback()
+      //   };
+      //   channel.port2.postMessage(undefined);
+      // }
+
+
+
+    // 初始化
+    // messageChannel 调度，不超过1帧的时间
+    // 主线程上执行
+   //    ---执行 Example 组件 渲染阶段
+   //       ---useEffect 加到 fiber 节点上挂上
+   //       ---useLayoutEffect   加到 fiber 节点上挂上
+   //       ---queueMicrotaskDemo 加入微任务队列
+   //       ---setTimeoutDemo 加入宏任务队列
+   //   ———— 生成 fiber 树
+  //    ———— 提交渲染给浏览器 提交阶段
+  //    ———— useLayoutEffect 的回调先执行
+  //    ____ useEffect 的回调
+  //        看看微任务空没空，拿回主线程继续跑
+  //    ____ queueMicrotaskDemo 跑下
+  //        看看宏任务空没空，拿回主线程继续跑
+  //    ____ setTimeoutDemo 跑下
+
+  //  第一次点击setCount
+  //  onClick，onClick 回调函数到达主线程
+  //    ---setTimeoutInOnClick 宏任务队列
+  //    ---queueMicrotaskInClick微任务队列
+  //    ---setCountFun函数主线程上执行
+  //       —————— 开始了一个调度回调 (scheduleMicrotask)queueMicrotask 在 react-dom 包里面
+  //    ___ 主线程是空出来的，微任务队列里有东西
+  //      先执行微任务队列 queueMicrotaskInClick 函数
+  //    __ 主线程又空出来了
+  //    ———— 执行 Messagechannel 的回调 在 react 包里面
+  //      __执行渲染阶段 renderRootSync 是否进时间切片 includesBlockingLane
+  //     ___ 提交阶段  commitRoot
+
+  // eagerstate 优化，第一次setState
+  </script>
+</body>
+
